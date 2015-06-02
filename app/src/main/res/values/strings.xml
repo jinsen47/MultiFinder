@@ -19,4 +19,8 @@
     <string name="title_paired_devices">已配对设备</string>
     <string name="title_other_devices">其他可用设备</string>
     <string name="button_scan">寻找周围设备</string>
+
+    <!-- AlertDialog -->
+    <string name="device_title">输入一个名字</string>
+    <string name="device_time">选择报警时间</string>
 </resources>

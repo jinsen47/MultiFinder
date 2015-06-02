@@ -20,6 +20,7 @@ import java.util.List;
 public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHolder> {
     List<DeviceBean> mDevices;
     List<Integer> mColors;
+    private MyItemClickListener myItemClickListener;
 
     public DeviceAdapter(List<DeviceBean> mDevices, List<Integer> mColors) {
         this.mDevices = mDevices;
@@ -29,7 +30,7 @@ public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHold
     @Override
     public DeviceHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item, parent, false);
-        return new DeviceHolder(view);
+        return new DeviceHolder(view, myItemClickListener);
     }
 
     @Override
@@ -56,6 +57,14 @@ public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHold
         });
     }
 
+    public void setOnItemClickListener (MyItemClickListener listener) {
+        this.myItemClickListener = listener;
+    }
+
+    public interface MyItemClickListener {
+        public void onClick(View view, int position);
+    }
+
     @Override
     public int getItemCount() {
         return mDevices.size();
@@ -66,14 +75,17 @@ public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHold
         return R.id.swipelayout;
     }
 
-    public static class DeviceHolder extends RecyclerView.ViewHolder{
+    public static class DeviceHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
         public TextView mTitle;
         public TextView mAddress;
         public TextView mRssi;
         public FrameLayout mColorband;
         public ImageView mTrash;
         public SwipeLayout swipelayout;
-        public DeviceHolder(final View itemView) {
+
+        private MyItemClickListener mListener;
+
+        public DeviceHolder(final View itemView, MyItemClickListener listener) {
             super(itemView);
             mTitle = ((TextView) itemView.findViewById(R.id.item_title));
             mAddress = ((TextView) itemView.findViewById(R.id.item_address));
@@ -81,6 +93,16 @@ public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHold
             mColorband = ((FrameLayout) itemView.findViewById(R.id.colorband));
             mTrash = ((ImageView) itemView.findViewById(R.id.star));
             swipelayout = ((SwipeLayout) itemView.findViewById(R.id.swipelayout));
+
+            mListener = listener;
+            swipelayout.setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View v) {
+            if (mListener != null) {
+                mListener.onClick(v, getLayoutPosition());
+            }
         }
     }
 }

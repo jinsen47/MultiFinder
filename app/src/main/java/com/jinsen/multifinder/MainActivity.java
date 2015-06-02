@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
@@ -12,6 +13,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -19,6 +21,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.daimajia.swipe.SwipeLayout;
@@ -157,6 +161,31 @@ public class MainActivity extends AppCompatActivity {
         }
 
         mAdapter = new DeviceAdapter(mDevices, mColors);
+        final View dialogView = getLayoutInflater().inflate(R.layout.dialog_pref, (ViewGroup) findViewById(R.id.dialog_pref));
+        mAdapter.setOnItemClickListener(new DeviceAdapter.MyItemClickListener() {
+            @Override
+            public void onClick(View view, final int position) {
+                AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).setTitle("请输入设备名称")
+//                        .setIcon(android.R.drawable.ic_dialog_info)
+                        .setView(dialogView)
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                setResult(RESULT_OK);
+                                String name = ((EditText) dialogView.findViewById(R.id.title)).getText().toString();
+                                mDevices.get(position).setTitle(name);
+                                mAdapter.notifyDataSetChanged();
+                            }
+                        })
+                        .setNegativeButton("返回", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.cancel();
+                            }
+                        }).create();
+                dialog.show();
+            }
+        });
 
         mRecyclerView.setAdapter(mAdapter);
 
