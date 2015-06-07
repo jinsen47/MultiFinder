@@ -23,4 +23,23 @@
     <!-- AlertDialog -->
     <string name="device_title">输入一个名字</string>
     <string name="device_time">选择报警时间</string>
+
+    <!-- Preference -->
+    <string name="chooseTime">请选择报警间隔</string>
+    <string name="chooseAlarm">请选择报警音</string>
+    <string name="chooseTime_summary">请选择报警时间</string>
+    <string name="chooseAlarm_summary">请选择报警音</string>
+    <string-array name="time">
+        <item>5秒</item>
+        <item>10秒</item>
+        <item>15秒</item>
+        <item>20秒</item>
+    </string-array>
+    <string-array name="time_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+    <string name="title_activity_setting">SettingActivity</string>
 </resources>

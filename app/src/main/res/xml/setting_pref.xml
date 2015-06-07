@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <RingtonePreference
+        android:title="@string/chooseAlarm"
+        android:key="pref_key_alarm"
+        android:defaultValue="false"
+        android:summary="@string/chooseAlarm_summary"/>
+    <ListPreference
+        android:title="@string/chooseTime"
+        android:summary="@string/chooseTime_summary"
+        android:key="pref_key_time"
+        android:defaultValue="false"
+        android:entries="@array/time"
+        android:entryValues="@array/time_values"
+        android:dialogTitle="@string/chooseTime_summary"/>
+</PreferenceScreen>

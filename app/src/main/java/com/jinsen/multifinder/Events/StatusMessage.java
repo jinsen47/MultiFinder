@@ -6,6 +6,7 @@ package com.jinsen.multifinder.Events;
  * This is a message used for bluetooth gatt connection state change.
  */
 public class StatusMessage {
+    public static int TRASH = 5;
     private String address;
     private int state;
 

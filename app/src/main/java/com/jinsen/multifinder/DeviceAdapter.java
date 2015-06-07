@@ -11,8 +11,11 @@ import android.widget.TextView;
 
 import com.daimajia.swipe.SwipeLayout;
 import com.daimajia.swipe.adapters.RecyclerSwipeAdapter;
+import com.jinsen.multifinder.Events.StatusMessage;
 
 import java.util.List;
+
+import de.greenrobot.event.EventBus;
 
 /**
  * Created by Jinsen on 15/6/1.
@@ -48,6 +51,7 @@ public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHold
             @Override
             public void onClick(View v) {
                 mItemManger.removeShownLayouts(holder.swipelayout);
+                EventBus.getDefault().post(new StatusMessage(mDevices.get(position).getAddress(), StatusMessage.TRASH));
                 mDevices.remove(position);
                 notifyItemRemoved(position);
                 notifyItemRangeChanged(position, mDevices.size());
@@ -75,7 +79,7 @@ public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHold
         return R.id.swipelayout;
     }
 
-    public static class DeviceHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
+    public static class DeviceHolder extends RecyclerView.ViewHolder implements View.OnLongClickListener{
         public TextView mTitle;
         public TextView mAddress;
         public TextView mRssi;
@@ -95,14 +99,15 @@ public class DeviceAdapter extends RecyclerSwipeAdapter<DeviceAdapter.DeviceHold
             swipelayout = ((SwipeLayout) itemView.findViewById(R.id.swipelayout));
 
             mListener = listener;
-            swipelayout.setOnClickListener(this);
+            swipelayout.setOnLongClickListener(this);
         }
 
         @Override
-        public void onClick(View v) {
+        public boolean onLongClick(View v) {
             if (mListener != null) {
                 mListener.onClick(v, getLayoutPosition());
             }
+            return true;
         }
     }
 }

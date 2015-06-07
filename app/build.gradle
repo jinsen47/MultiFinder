@@ -41,5 +41,6 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-core:2.5.2'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.5.2'
     compile 'com.fasterxml.jackson.core:jackson-annotations:2.5.2'
+    compile 'com.appyvet:materialrangebar:1.0'
 
 }

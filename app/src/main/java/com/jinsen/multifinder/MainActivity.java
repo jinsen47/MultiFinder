@@ -10,7 +10,10 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
@@ -23,11 +26,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.Toast;
 
-import com.daimajia.swipe.SwipeLayout;
+import com.appyvet.rangebar.RangeBar;
+import com.jinsen.multifinder.Events.AlarmMessage;
 import com.jinsen.multifinder.Events.RssiMessage;
 import com.jinsen.multifinder.Events.StatusMessage;
+import com.jinsen.multifinder.Events.TimeMessage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +43,6 @@ import jp.wasabeef.recyclerview.animators.FadeInLeftAnimator;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private RecyclerView mRecyclerView;
-    private SwipeLayout mSwipeLayout;
     private FloatingActionButton mActionButton;
     private RecyclerView.LayoutManager mLayoutManager;
     private DeviceAdapter mAdapter;
@@ -53,6 +56,24 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothLeService mBluetoothLeService = null;
     private BluetoothAdapter mBluetoothAdapter;
 
+    private String mTime;
+    private String mAlarm;
+
+    // Player to play the alarm
+    private MediaPlayer mPlayer = null;
+
+    private static final Handler handler = new Handler();
+    private final Runnable rssiSync = new Runnable() {
+        @Override
+        public void run() {
+            Log.d(TAG, "Rssi syncing!");
+            if (mDevices.size() > 0 && mBluetoothLeService != null) {
+                mBluetoothLeService.readRemoteRssi();
+                Log.d(TAG, "Rssi syncing working!");
+                handler.postDelayed(rssiSync, 1000);
+            }
+        }
+    };
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
@@ -102,13 +123,24 @@ public class MainActivity extends AppCompatActivity {
 
         EventBus.getDefault().register(this);
 
+//        handler.postDelayed(rssiSync, 1000);
+
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        EventBus.getDefault().unregister(this);
+
+
+//        EventBus.getDefault().unregister(this);
         mCache.writeToFile();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        handler.removeCallbacks(rssiSync);
+        EventBus.getDefault().unregister(this);
     }
 
     @Override
@@ -160,11 +192,25 @@ public class MainActivity extends AppCompatActivity {
             mColors.add(Color.RED);
         }
 
+        mTime = PreferenceUtil.getString(this, SettingFragment.KEY_TIME, "0");
+        mAlarm = PreferenceUtil.getString(this, SettingFragment.KEY_ALARM);
+
+
         mAdapter = new DeviceAdapter(mDevices, mColors);
-        final View dialogView = getLayoutInflater().inflate(R.layout.dialog_pref, (ViewGroup) findViewById(R.id.dialog_pref));
         mAdapter.setOnItemClickListener(new DeviceAdapter.MyItemClickListener() {
             @Override
             public void onClick(View view, final int position) {
+                final View dialogView = getLayoutInflater().inflate(R.layout.dialog_pref, (ViewGroup) findViewById(R.id.dialog_pref));
+                final RangeBar rangeBar = ((RangeBar) dialogView.findViewById(R.id.rangebar));
+
+                // Set range bar time range
+                rangeBar.setTickStart(0f);
+                rangeBar.setTickEnd(20f);
+
+                // Set range bar time interval
+                rangeBar.setTickInterval(5f);
+//                rangeBar.setProgress(Integer.parseInt(mTime));
+
                 AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).setTitle("请输入设备名称")
 //                        .setIcon(android.R.drawable.ic_dialog_info)
                         .setView(dialogView)
@@ -172,9 +218,17 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 setResult(RESULT_OK);
+
                                 String name = ((EditText) dialogView.findViewById(R.id.title)).getText().toString();
+                                if (name.equals("")) return;
+
                                 mDevices.get(position).setTitle(name);
                                 mAdapter.notifyDataSetChanged();
+
+                                // Times 5 to get the right value
+                                mTime = (rangeBar.getRightIndex() - rangeBar.getLeftIndex()) * 5 + "";
+
+                                Log.d(TAG, "Seekbar progress is " + mTime);
                             }
                         })
                         .setNegativeButton("返回", new DialogInterface.OnClickListener() {
@@ -234,6 +288,9 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            Intent intent = new Intent();
+            intent.setClass(this, SettingActivity.class);
+            startActivity(intent);
             return true;
         }
 
@@ -252,33 +309,78 @@ public class MainActivity extends AppCompatActivity {
             if (mDevices.get(i).getAddress().toLowerCase().equals(address.toLowerCase())) {
                 mDevices.get(i).setRssi(rssi);
                 Log.d(TAG, "update " + address + " rssi = " + rssi);
+                mAdapter.notifyDataSetChanged();
+                return;
             }
         }
         Log.e(TAG, "update device state failed, no match found");
-        mAdapter.notifyDataSetChanged();
+
     }
 
     public void onEventMainThread(StatusMessage message) {
-        String address = message.getAddress();
-        for (int i = 0; i < mDevices.size(); i++) {
-            if (mDevices.get(i).getAddress().toLowerCase().equals(address.toLowerCase())) {
-                if (message.getState() == BluetoothLeService.STATE_CONNECTED) {
-                    mColors.set(i, Color.GREEN);
-                    mAdapter.notifyDataSetChanged();
-                    Log.d(TAG, address + "has connected!");
-                }
-                if (message.getState() == BluetoothLeService.STATE_DISCONNECTED) {
-                    mColors.set(i, Color.RED);
-                    mAdapter.notifyDataSetChanged();
-                    Log.d(TAG, address + "has lost!");
+        if (message.getState() != StatusMessage.TRASH) {
+            String address = message.getAddress();
+            for (int i = 0; i < mDevices.size(); i++) {
+                if (mDevices.get(i).getAddress().toLowerCase().equals(address.toLowerCase())) {
+                    if (message.getState() == BluetoothLeService.STATE_CONNECTED) {
+                        mColors.set(i, Color.GREEN);
+                        mAdapter.notifyDataSetChanged();
+                        Log.d(TAG, address + "has connected!");
+
+                        // Re add to list
+                        handler.removeCallbacks(rssiSync);
+                        handler.post(rssiSync);
+                    }
+                    if (message.getState() == BluetoothLeService.STATE_DISCONNECTED) {
+                        mColors.set(i, Color.RED);
+                        mAdapter.notifyDataSetChanged();
+                        Log.d(TAG, address + "has lost!");
+                    }
                 }
             }
+        }else {
+            mBluetoothLeService.disconnect(message.getAddress());
         }
-        mBluetoothLeService.readRemoteRssi();
+//        mBluetoothLeService.readRemoteRssi();
     }
 
     public void onEventMainThread(RssiMessage message) {
         updateDeviceState(message.getAddress(), message.getRssi());
+    }
+
+    public void onEvent(AlarmMessage message) {
+        String alarm = message.getAlarm();
+        Log.d(TAG, "onAlarmMessage : " + message.getAlarm());
+        if (alarm != null) {
+            this.mAlarm = alarm;
+        }
+    }
+
+    public void onEvent(TimeMessage message) {
+        String time = message.getTime() + "";
+        Log.d(TAG, "onTimeMessage : " + message.getTime());
+        if (time != null) {
+            this.mTime = time;
+        }
+    }
+
+    private void playAlarm() {
+        Log.d(TAG, "Alarm:" + mAlarm);
+        mPlayer = MediaPlayer.create(this, Uri.parse(mAlarm));
+        mPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mp) {
+                mPlayer.start();
+            }
+        });
+        mPlayer.setLooping(true);
+    }
+
+    private void stopAlarm() {
+        Log.d(TAG, "StopAlarm");
+        if (mPlayer != null) {
+            if (mPlayer.isPlaying()) mPlayer.stop();
+        }
     }
 
 }
